@@ -184,8 +184,6 @@ void *dto_malloc(size_t size) { return malloc(size); }
 
 void dto_free(void *ptr) { free(ptr); }
 
-char *dto_strdup(const char *s) { return strdup(s); }
-
 char *dto_strchr(const char *s, int c) { return strchr(s, c); }
 
 unsigned long int dto_strtoul(const char *nptr, char **endptr, int base) {
@@ -193,6 +191,10 @@ unsigned long int dto_strtoul(const char *nptr, char **endptr, int base) {
 }
 
 size_t dto_strlen(const char *s) { return strlen(s); }
+
+int dto_memcmp(const void *lhs, const void *rhs, size_t n) {
+  return memcmp(lhs, rhs, n);
+}
 
 void *dto_memcpy(void *dest, const void *src, size_t n) {
   return memcpy(dest, src, n);

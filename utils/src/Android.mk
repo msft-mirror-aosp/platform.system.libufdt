@@ -1,4 +1,4 @@
-# Copyright (C) 2016 The Android Open Source Project
+# Copyright (C) 2017 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,4 +13,27 @@
 # limitations under the License.
 
 LOCAL_PATH:= $(call my-dir)
-include $(call first-makefiles-under, $(LOCAL_PATH))
+
+###################################################
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := mkdtimg
+LOCAL_SRC_FILES := \
+	mkdtimg.c \
+	mkdtimg_cfg_create.c \
+	mkdtimg_core.c \
+	mkdtimg_create.c \
+	mkdtimg_dump.c \
+	dt_table.c
+LOCAL_STATIC_LIBRARIES := \
+	libfdt \
+	libufdt_sysdeps
+LOCAL_REQUIRED_MODULES := dtc
+LOCAL_CXX_STL := none
+
+include $(BUILD_HOST_EXECUTABLE)
+
+###################################################
+
+$(call dist-for-goals, dist_files, $(ALL_MODULES.mkdtimg.BUILT):libufdt/mkdtimg)
