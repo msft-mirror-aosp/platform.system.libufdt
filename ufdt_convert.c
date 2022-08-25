@@ -149,7 +149,13 @@ static struct ufdt_node *fdt_to_ufdt_tree(void *fdtp, int cur_fdt_tag_offset,
 
       do {
         cur_fdt_tag_offset = *next_fdt_tag_offset;
+
         tag = fdt_next_tag(fdtp, cur_fdt_tag_offset, next_fdt_tag_offset);
+        if (tag == FDT_END) {
+          dto_error("failed to get next tag\n");
+          break;
+        }
+
         child_node = fdt_to_ufdt_tree(fdtp, cur_fdt_tag_offset,
                                       next_fdt_tag_offset, tag, pool);
         ufdt_node_add_child(res, child_node);
@@ -250,14 +256,14 @@ static void set_phandle_table_entry(struct ufdt_node *node,
                                     struct ufdt_phandle_table_entry *data,
                                     int *cur) {
   if (node == NULL || ufdt_node_tag(node) != FDT_BEGIN_NODE) return;
-  int ph = ufdt_node_get_phandle(node);
+  uint32_t ph = ufdt_node_get_phandle(node);
   if (ph > 0) {
     data[*cur].phandle = ph;
     data[*cur].node = node;
     (*cur)++;
   }
   struct ufdt_node **it;
-  for_each_node(it, node) set_phandle_table_entry(*it, data, cur);
+  for_each_child(it, node) set_phandle_table_entry(*it, data, cur);
   return;
 }
 
@@ -293,6 +299,8 @@ struct ufdt *ufdt_from_fdt(void *fdtp, size_t fdt_size,
   }
 
   struct ufdt *res_tree = ufdt_construct(fdtp, pool);
+  if (res_tree == NULL) return NULL;
+
   int end_offset;
   int start_tag = fdt_next_tag(fdtp, start_offset, &end_offset);
   res_tree->root =
@@ -415,6 +423,7 @@ static int _ufdt_output_strtab_to_fdt(const struct ufdt *tree, void *fdt) {
 
 int ufdt_to_fdt(const struct ufdt *tree, void *buf, int buf_size) {
   if (tree->num_used_fdtps == 0) return -1;
+  if (tree->root == NULL) return -1;
 
   int err;
   err = fdt_create(buf, buf_size);
@@ -440,9 +449,11 @@ int ufdt_to_fdt(const struct ufdt *tree, void *buf, int buf_size) {
   if (err < 0) return -1;
 
   err = _ufdt_output_node_to_fdt(tree, buf, tree->root, &dict);
-  if (err < 0) return -1;
 
+  // Ensure property_dict is freed, even on error path.
   ufdt_prop_dict_destruct(&dict);
+
+  if (err < 0) return -1;
 
   err = fdt_finish(buf);
   if (err < 0) return -1;
