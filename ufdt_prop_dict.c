@@ -29,14 +29,14 @@
 #define DICT_LIMIT_DEN 3
 
 static int _ufdt_prop_dict_str_hash(const char *str) {
-  uint res = 0;
+  int res = 0;
 
   for (; *str != '\0'; str++) {
     res *= HASH_BASE;
     res += *str;
   }
 
-  return (int)res;
+  return res;
 }
 
 static const struct fdt_property **_ufdt_prop_dict_find_index_by_name(
