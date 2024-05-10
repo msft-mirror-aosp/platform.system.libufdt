@@ -163,7 +163,12 @@ void *ufdt_get_fixup_location(struct ufdt *tree, const char *fixup) {
 
   prop_offset = dto_strtoul(offset_ptr, &end_ptr, 10 /* base */);
   if (*end_ptr != '\0') {
-    dto_error("'%s' is not valid number\n", offset_ptr);
+    dto_error("'%s' is not a valid number\n", offset_ptr);
+    goto fail;
+  }
+
+  if (prop_offset < 0) {
+    dto_error("'%s' is not a valid offset\n", offset_ptr);
     goto fail;
   }
 
@@ -183,7 +188,8 @@ void *ufdt_get_fixup_location(struct ufdt *tree, const char *fixup) {
   /*
    * Note that prop_offset is the offset inside the property data.
    */
-  if (prop_len < prop_offset + (int)sizeof(uint32_t)) {
+  if (prop_len < (int)sizeof(uint32_t) ||
+      prop_offset > prop_len - (int)sizeof(uint32_t)) {
     dto_error("%s: property length is too small for fixup\n", path);
     goto fail;
   }
@@ -448,12 +454,14 @@ static int ufdt_local_fixup_prop(struct ufdt_node *target_prop_node,
   int len = 0;
   prop_offsets_ptr = ufdt_node_get_fdt_prop_data(local_fixup_prop_node, &len);
 
+  if (prop_offsets_ptr == NULL || len % sizeof(fdt32_t) != 0) return -1;
+
   char *prop_data;
   int target_length = 0;
 
   prop_data = ufdt_node_get_fdt_prop_data(target_prop_node, &target_length);
 
-  if (prop_offsets_ptr == NULL || prop_data == NULL) return -1;
+  if (prop_data == NULL) return -1;
 
   int i;
   for (i = 0; i < len; i += sizeof(fdt32_t)) {
