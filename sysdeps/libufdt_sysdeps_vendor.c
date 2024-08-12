@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#ifndef DTO_DISABLE_DEFAULT_VENDOR_LIBC_PRINT
 int dto_print(const char *fmt, ...) {
   int err;
 
@@ -15,6 +16,7 @@ int dto_print(const char *fmt, ...) {
 
   return err;
 }
+#endif
 
 /* Codes from
  * https://android.googlesource.com/platform/bionic.git/+/eclair-release/libc/stdlib/qsort.c
