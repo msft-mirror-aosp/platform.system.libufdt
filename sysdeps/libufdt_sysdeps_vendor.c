@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#ifndef DTO_DISABLE_DEFAULT_VENDOR_LIBC_PRINT
 int dto_print(const char *fmt, ...) {
   int err;
 
@@ -15,6 +16,7 @@ int dto_print(const char *fmt, ...) {
 
   return err;
 }
+#endif
 
 /* Codes from
  * https://android.googlesource.com/platform/bionic.git/+/eclair-release/libc/stdlib/qsort.c
@@ -180,9 +182,11 @@ void dto_qsort(void *base, size_t nmemb, size_t size,
  * bootloader source with the names conforming to POSIX.
  */
 
+#ifndef DTO_DISABLE_DEFAULT_VENDOR_LIBC_ALLOCATION
 void *dto_malloc(size_t size) { return malloc(size); }
 
 void dto_free(void *ptr) { free(ptr); }
+#endif
 
 char *dto_strchr(const char *s, int c) { return strchr(s, c); }
 
