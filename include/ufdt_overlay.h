@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2016-2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,5 +38,23 @@ struct fdt_header *ufdt_apply_overlay(struct fdt_header *main_fdt_header,
                                       size_t main_fdt_size,
                                       void *overlay_fdtp,
                                       size_t overlay_size);
+
+/*
+ * Apply device tree `overlays` to `main_fdt_header` fdt buffer. (API is unstable)
+ *
+ * `main_fdt_header` is getting overrided by result tree, so it must
+ * have enough space (provided by `main_fdt_buffer_size`) to store it.
+ * `main_fdt_header` and all `overlays` must be 8 bytes aligned.
+ *
+ * `dto_malloc` is used for:
+ * - ufdt structures around main fdt and overlays.
+ * - result tree temporary buffer at most `main_fdt_buffer_size` size.
+ *
+ * TODO(b/362830550): expose a more comprehensive error type.
+ * Returns 0 or -1 in case of error.
+ */
+int ufdt_apply_multioverlay(struct fdt_header *main_fdt_header,
+                            size_t main_fdt_buffer_size, void *const *overlays,
+                            size_t overlays_count);
 
 #endif /* UFDT_OVERLAY_H */
