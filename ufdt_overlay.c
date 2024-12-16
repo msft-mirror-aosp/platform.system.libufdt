@@ -290,6 +290,12 @@ int ufdt_overlay_do_fixups(struct ufdt *main_tree, struct ufdt *overlay_tree) {
 
     const char *fixups_paths = ufdt_node_get_fdt_prop_data(fixups, &len);
 
+    if (len == 0 || !fixups_paths || fixups_paths[len - 1] != 0) {
+      dto_error("Format error for %s: fixups are not null terminated\n",
+                ufdt_node_name(fixups));
+      return -1;
+    }
+
     if (ufdt_do_one_fixup(overlay_tree, fixups_paths, len, phandle) < 0) {
       dto_error("Failed one fixup in ufdt_do_one_fixup\n");
       return -1;
