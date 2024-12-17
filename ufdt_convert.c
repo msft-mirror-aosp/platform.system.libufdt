@@ -366,7 +366,7 @@ static int _ufdt_output_property_to_fdt(
       (struct fdt_property *)((char *)fdtp + fdt_off_dt_struct(fdtp) +
                               new_propoff);
   char *fdt_end = (char *)fdtp + fdt_totalsize(fdtp);
-  if ((char *)new_prop + new_prop_size > fdt_end) {
+  if (fdt_end - (char *)new_prop < (ptrdiff_t)new_prop_size) {
     dto_error("Not enough space for adding property.\n");
     return -1;
   }
