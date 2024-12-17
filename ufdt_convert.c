@@ -291,6 +291,11 @@ int phandle_table_entry_cmp(const void *pa, const void *pb) {
 struct ufdt_static_phandle_table build_phandle_table(struct ufdt *tree) {
   struct ufdt_static_phandle_table res;
   res.len = count_phandle_node(tree->root);
+  if (!res.len) {
+    dto_debug("phandle table is empty\n");
+    res.data = NULL;
+    return res;
+  }
   res.data = dto_malloc(sizeof(struct ufdt_phandle_table_entry) * res.len);
   int cur = 0;
   set_phandle_table_entry(tree->root, res.data, &cur);
@@ -425,6 +430,11 @@ static int _ufdt_output_strtab_to_fdt(const struct ufdt *tree, void *fdt) {
     void *src_fdt = tree->fdtps[i];
     const char *src_strtab = (const char *)src_fdt + fdt_off_dt_strings(src_fdt);
     int strtab_size = fdt_size_dt_strings(src_fdt);
+
+    if (strtab_size == 0) {
+      dto_debug("String table is empty in fdtp\n");
+      continue;
+    }
 
     dest -= strtab_size;
     if (dest < struct_top) {
