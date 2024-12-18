@@ -290,6 +290,12 @@ int ufdt_overlay_do_fixups(struct ufdt *main_tree, struct ufdt *overlay_tree) {
 
     const char *fixups_paths = ufdt_node_get_fdt_prop_data(fixups, &len);
 
+    if (len == 0 || !fixups_paths || fixups_paths[len - 1] != 0) {
+      dto_error("Format error for %s: fixups are not null terminated\n",
+                ufdt_node_name(fixups));
+      return -1;
+    }
+
     if (ufdt_do_one_fixup(overlay_tree, fixups_paths, len, phandle) < 0) {
       dto_error("Failed one fixup in ufdt_do_one_fixup\n");
       return -1;
@@ -689,4 +695,101 @@ fail:
   dto_free(out_fdt_header);
 
   return NULL;
+}
+
+/*
+ * Apply device tree `overlays` to `main_fdt_header` fdt buffer. (API is unstable)
+ *
+ * `main_fdt_header` is getting overrided by result tree, so it must
+ * have enough space (provided by `main_fdt_buffer_size`) to store it.
+ * `main_fdt_header` and all `overlays` must be 8 bytes aligned.
+ *
+ * `dto_malloc` is used for:
+ * - ufdt structures around main fdt and overlays.
+ * - result tree temporary buffer at most `main_fdt_buffer_size` size.
+ *
+ * TODO(b/362830550): expose a more comprehensive error type.
+ * Returns 0 or -1 in case of error.
+ */
+int ufdt_apply_multioverlay(struct fdt_header *main_fdt_header,
+                            size_t main_fdt_buffer_size, void *const *overlays,
+                            size_t overlays_count) {
+  void *temporary_buffer = NULL;
+
+  if (main_fdt_header == NULL || fdt_check_header(main_fdt_header) != 0 ||
+      overlays == NULL) {
+    return -1;
+  }
+  if (overlays_count == 0) {
+    return 0;
+  }
+
+  size_t result_size = fdt_totalsize(main_fdt_header);
+  struct ufdt_node_pool pool;
+  ufdt_node_pool_construct(&pool);
+  struct ufdt *main_tree = ufdt_from_fdt(main_fdt_header, result_size, &pool);
+
+  for (size_t i = 0; i < overlays_count; i++) {
+    struct fdt_header *current_overlay = overlays[i];
+    if (fdt_check_header(current_overlay) != 0) {
+      dto_error("Failed to parse %zuth overlay header\n", i);
+      goto error;
+    }
+
+    size_t overlay_size = fdt_totalsize(current_overlay);
+    result_size += overlay_size;
+
+    // prepare main tree by rebuilding phandle table. don't need to do so
+    // for the first iteration since main_tree hasn't been updated yet
+    if (i != 0) {
+      main_tree->phandle_table = build_phandle_table(main_tree);
+    }
+
+    struct ufdt *overlay_tree =
+        ufdt_from_fdt(current_overlay, overlay_size, &pool);
+    int err = ufdt_overlay_apply(main_tree, overlay_tree, overlay_size, &pool);
+    ufdt_destruct(overlay_tree, &pool);
+    if (err < 0) {
+      dto_error("Failed to apply overlay number: %d\n", i);
+      goto error;
+    }
+  }
+
+  if (result_size > main_fdt_buffer_size) {
+    dto_error(
+        "Not enough space in main_fdt to apply the overlays. Required %d, "
+        "available: %d\n",
+        result_size, main_fdt_buffer_size);
+    goto error;
+  }
+
+  // ufdt tree has references to fdt buffer, so we cannot dump ufdt to
+  // underlying fdt buffer directly. allocate intermediate buffer for that.
+  temporary_buffer = dto_malloc(result_size);
+  if (temporary_buffer == NULL) {
+    dto_error("Failed to allocate memory for temporary buffer: %d\n",
+              result_size);
+    goto error;
+  }
+
+  int err = ufdt_to_fdt(main_tree, temporary_buffer, result_size);
+  if (err < 0) {
+    dto_error(
+        "Failed to dump the result device tree to the temporary buffer\n");
+    goto error;
+  }
+  ufdt_destruct(main_tree, &pool);
+
+  dto_memcpy(main_fdt_header, temporary_buffer, result_size);
+  dto_free(temporary_buffer);
+  ufdt_node_pool_destruct(&pool);
+
+  return 0;
+
+error:
+  dto_free(temporary_buffer);
+  ufdt_destruct(main_tree, &pool);
+  ufdt_node_pool_destruct(&pool);
+
+  return -1;
 }
